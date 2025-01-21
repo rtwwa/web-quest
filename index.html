@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phaser: Лаборатория</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.87.0/phaser.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.87.0/phaser.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      canvas {
+        display: block;
+      }
+      div#book {
+        position: absolute;
+        z-index: 100;
+        color: white;
+        top: 50px;
+        left: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Настройка конфигурации Phaser
+      const config = {
+        type: Phaser.AUTO,
+        width: 1366,
+        height: 768,
+        backgroundColor: "#f0f0f0",
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+        dom: {
+          createContainer: true, // Включаем поддержку DOM
+        },
+      };
+
+      const game = new Phaser.Game(config);
+
+      let codeEntered = "";
+
+      function preload() {
+        this.load.image("lab", "assets/lab.png");
+        this.load.image("safe", "assets/safe.png");
+        this.load.image("book", "assets/book.png");
+        this.load.image("m", "assets/m.png");
+        this.load.image("wm", "assets/wm.png");
+      }
+
+      function create() {
+        const dialogs = [
+          "Алексей: Мария, нам нужно найти все компоненты для компьютера.\n Давай начнем с процессора.",
+          "Мария: Хорошо, Алексей. Подсказка говорит, что процессор – это мозг \nкомпьютера и он может быть найден там, где хранятся самые важные вещи.",
+          "Мария: Найдите процессор. Он может быть в сейфе!",
+          "Алексей: Думаю, это сейф. Но нам нужен код.",
+          "Мария: Возможно в поиске кода нам поможет справочник.",
+          "Мария: Код – это год изобретения первого компьютера. Это 1941 год..",
+          "Алексей: Отлично! Давай попробуем.",
+          "Мария: Мы нашли процессор! Теперь нужно найти оперативную память.",
+          "Алексей: Оперативная память, или RAM, это временное хранилище данных, которое позволяет компьютеру быстро выполнять задачи.\nВозможно мы сможем найти ее среди тех вещей в которых люди еще с глубокой древности записывали различную информацию.",
+          "Мария: Думаю, это та полка с книгами по программированию.",
+          "Алексей: Там какая то маленькая дверца за ними!",
+          "Мария: Смотри на ней что-то написано: «Один из самых популярных производителей чипов памяти».",
+          "Алексей: Хмм, возможно в справочнике есть информация об этом.",
+          "Алексей: Отлично! Нам осталось найти не так уж и много, но и при этом то что объединит все.",
+          "Мария: Материнскую плату, точно!",
+          "Алексей: Где же она может быть… Возможно там где стоит вещь объединяющая много компонентов в одну сеть.",
+          "Мария: Точно, скорее всего мы сможем найти ее там.",
+          "Алексей: На ней стоит какой то пароль, как нам открыть ее?",
+          "Мария: Нужно соотнести сокеты материнских плат с процессорами подходящими к ним.",
+          "Алексей: Блиин, опять придется лезть справочник.",
+          "Мария: Мы нашли все компоненты! Теперь нужно идти в библиотеку, чтобы узнать, как собрать компьютер.",
+          "Алексей: А как же блок питания и видеокарта, а еще жёсткий диск?",
+          "Мария: Мы сможем взять их из твоего старого компьютера.",
+          "Алексей: Хорошо, Давай быстрее пойдем его тогда собирать!!!",
+          "Мария: Сначала нам нужно будет найти схему для сборки, пошли в библиотеку.",
+        ];
+
+        let safeTween = null;
+        let bookTween = null;
+        let safeOpened = false;
+        let foundRam = false;
+        let foundRamString = "";
+
+        const background = this.add.image(0, 0, "lab");
+        background.setOrigin(0, 0);
+        background.setDisplaySize(config.width, config.height);
+
+        const safe = this.add.image(205, 520, "safe");
+        safe.setDisplaySize(200, 200);
+
+        const book = this.add.image(1270, 75, "book");
+        book.setDisplaySize(80, 60);
+
+        const m = this.add.image(900, 650, "m");
+        m.setDisplaySize(600, 600);
+
+        const wm = this.add.image(1200, 650, "wm");
+        wm.setDisplaySize(700, 700);
+
+        m.setVisible(false);
+        wm.setVisible(false);
+
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0xffffff, 1);
+        graphics.fillRoundedRect(25, 25, 1000, 100, 50);
+
+        const books = this.add.rectangle(525, 575, 100, 250, 0x000000, 0.2);
+
+        const text = this.add.text(525, 75, "initial state", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#000000",
+          align: "center",
+          fontStyle: "bold",
+        });
+        text.setOrigin(0.5, 0.5);
+
+        function pulseSafe(scene, safe) {
+          safeTween = scene.tweens.add({
+            targets: safe,
+            scaleX: 0.45,
+            scaleY: 0.45,
+            duration: 1000,
+            ease: "Sine.easeInOut",
+            yoyo: true,
+            repeat: -1,
+          });
+        }
+
+        function pulseBook(scene, book) {
+          bookTween = scene.tweens.add({
+            targets: book,
+            scaleX: 0.125,
+            scaleY: 0.125,
+            duration: 1000,
+            ease: "Sine.easeInOut",
+            yoyo: true,
+            repeat: -1,
+          });
+        }
+
+        const pages = [
+          "Страница 1:\n\nПроцессор (ЦПУ)\nЦентральный процессор — главной элемент компьютера, отвечающий за вычислительные операции. Он играет роль 'мозга' компьютера и выполняет миллионы или даже миллиарды операций в секунду.",
+          "Страница 2:\n\nОперативная память (RAM)\nперативная память временно хранит данные, необходимые для работы программ. Чем больше объем RAM, тем быстрее и более сложные задачи может решать компьютер.",
+          "Страница 3:\n\nМатеринская плата\nМатеринская плата — основа компьютера, которая связывает все компоненты вместе. На ней расположены разъемы для подключения цпу, RAM, видеокарты и других устройств.",
+          "Страница 4:\n\nВидеокарта (ГПУ)\nВидеокарта отвечает за обработку и вывод графической информации. Это особо важно для игр, рендеринга и работы с видео или 3D графикой.",
+          "Страница 5:\n\nБлок питания\nБлок питания преобразует электрическое напряжение из сети в то, которое необходимо для работы всех компонентов. Он способен обеспечить стабильную работу компьютера при различных нагрузках.",
+          "Страница 6:\n\nОбщая сборка ПК\nДля сборки компьютера важно внимательно подобрать компоненты, чтобы они были совместимы и отвечали задачам пользователя. Уделяйте внимание соотношению мощности и бюджета.",
+          "Страница 7:\n\nОбщая информация о компьютере\nКомпьютер — это устройство для хранения, обработки и передачи данных. Первый полноценный электронный компьютер был создан в 1941 году Конрадом Цузе и назывался Z3. Настоящие компьютеры имеют широкий спектр применений в работе,обучении и развлечении.",
+        ];
+        let currentPage = 0;
+
+        const infoBackground = this.add.graphics();
+        infoBackground.fillStyle(0xffffff, 1);
+        infoBackground.fillRoundedRect(200, 100, 900, 500, 20);
+        infoBackground.setVisible(false);
+
+        const infoText = this.add.text(250, 150, "", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#000000",
+          wordWrap: { width: 800, useAdvancedWrap: true },
+        });
+        infoText.setVisible(false);
+
+        const nextButton = this.add.text(1000, 540, "→", {
+          fontSize: "64px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        nextButton.setInteractive();
+        nextButton.setVisible(false);
+
+        const prevButton = this.add.text(220, 540, "←", {
+          fontSize: "64px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        prevButton.setInteractive();
+        prevButton.setVisible(false);
+
+        const updatePage = () => {
+          infoText.setText(pages[currentPage]);
+
+          prevButton.setVisible(currentPage > 0);
+          nextButton.setVisible(currentPage < pages.length - 1);
+        };
+
+        book.on("pointerdown", () => {
+          const isVisible = infoBackground.visible;
+
+          infoBackground.setVisible(!isVisible);
+          infoText.setVisible(!isVisible);
+          nextButton.setVisible(!isVisible && pages.length > 1);
+          prevButton.setVisible(!isVisible && currentPage > 0);
+
+          if (!isVisible) {
+            updatePage();
+          }
+        });
+
+        nextButton.on("pointerdown", () => {
+          if (currentPage < pages.length - 1) {
+            currentPage++;
+            updatePage();
+          }
+        });
+
+        // Клик на кнопку "Назад"
+        prevButton.on("pointerdown", () => {
+          if (currentPage > 0) {
+            currentPage--;
+            updatePage();
+          }
+        });
+
+        const statusText = this.add.text(400, 300, "", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#ff0000",
+        });
+        statusText.setVisible(false);
+
+        // Форма ввода
+        const inputBox = this.add.graphics();
+        inputBox.fillStyle(0xffffff, 1); // Белый фон
+        inputBox.fillRoundedRect(300, 350, 400, 150, 10); // Прямоугольник
+        inputBox.setVisible(false);
+
+        const inputText = this.add.text(310, 420, "", {
+          fontSize: "32px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        inputText.setVisible(false);
+
+        const promptText = this.add.text(300, 370, "Введите код:", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        promptText.setVisible(false);
+
+        const submitButton = this.add.text(580, 420, "Открыть", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#0000ff",
+        });
+        submitButton.setInteractive();
+        submitButton.setVisible(false);
+
+        // Логика ввода пароля
+        let enteredCode = "";
+
+        this.input.keyboard.on("keydown", (event) => {
+          if (!inputText.visible) return;
+
+          if (event.key >= "0" && event.key <= "9" && enteredCode.length < 4) {
+            enteredCode += event.key; // Добавляем цифру в код
+            inputText.setText(enteredCode);
+          } else if (event.key === "Backspace" && enteredCode.length > 0) {
+            enteredCode = enteredCode.slice(0, -1); // Удаляем последний символ
+            inputText.setText(enteredCode);
+          }
+        });
+
+        submitButton.on("pointerdown", () => {
+          if (enteredCode === "1941") {
+            // Проверка пароля
+            statusText.setText("Сейф открыт! Вы нашли процессор!");
+            statusText.setStyle({
+              color: "#00ff00",
+              backgroundColor: "#ffffff",
+            });
+            safeOpened = true;
+          } else {
+            statusText.setText("Неверный код! Попробуйте снова.");
+            statusText.setStyle({
+              color: "#ff0000",
+              backgroundColor: "#ffffff",
+            });
+          }
+          statusText.setVisible(true);
+          inputBox.setVisible(false);
+          inputText.setVisible(false);
+          promptText.setVisible(false);
+          submitButton.setVisible(false);
+          setTimeout(() => statusText.setText(""), 5000);
+        });
+
+        const answerText = this.add.text(600, 500, "", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#ff0000",
+        });
+        answerText.setOrigin(0.5);
+        answerText.setVisible(false);
+
+        // Форма ввода
+        const inputBox2 = this.add.graphics();
+        inputBox2.fillStyle(0xffffff, 1); // Белый фон
+        inputBox2.fillRoundedRect(400, 550, 400, 150, 10); // Прямоугольник снизу
+        inputBox2.setVisible(false);
+
+        const inputText2 = this.add.text(410, 600, "", {
+          fontSize: "32px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        inputText2.setVisible(false);
+
+        const promptText2 = this.add.text(420, 560, "Введите производителя:", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#000000",
+        });
+        promptText2.setVisible(false);
+
+        const submitButton2 = this.add.text(650, 650, "Отправить", {
+          fontSize: "24px",
+          fontFamily: "Arial",
+          color: "#0000ff",
+        });
+        submitButton2.setInteractive();
+        submitButton2.setVisible(false);
+
+        // Логика ввода слова
+        let enteredWord = "";
+
+        this.input.keyboard.on("keydown", (event) => {
+          if (!inputText2.visible) return;
+
+          if (event.key.length === 1 && enteredWord.length < 20) {
+            enteredWord += event.key; // Добавляем символ в слово
+            inputText2.setText(enteredWord);
+          } else if (event.key === "Backspace" && enteredWord.length > 0) {
+            enteredWord = enteredWord.slice(0, -1); // Удаляем последний символ
+            inputText2.setText(enteredWord);
+          }
+        });
+
+        submitButton2.on("pointerdown", () => {
+          const allowedAnswers = ["hynix", "samsung", "micron"]; // Разрешенные слова
+          const normalizedWord = enteredWord.trim().toLowerCase(); // Убираем пробелы и приводим к нижнему регистру
+
+          if (allowedAnswers.includes(normalizedWord)) {
+            // Если слово верное
+            answerText.setText("Правильно! Вы нашли производителя.");
+            answerText.setStyle({
+              color: "#00ff00",
+              backgroundColor: "#ffffff",
+            });
+            answerText.setVisible(true);
+
+            // Скрываем все элементы ввода
+            inputBox2.setVisible(false);
+            inputText2.setVisible(false);
+            promptText2.setVisible(false);
+            submitButton2.setVisible(false);
+
+            // Продолжение игры
+            foundRam = true;
+            foundRamString = normalizedWord;
+            setTimeout(() => answerText.setVisible(false), 3000);
+          } else {
+            // Если слово неверное
+            answerText.setText("Неверно! Попробуйте снова.");
+            answerText.setStyle({
+              color: "#ff0000",
+              backgroundColor: "#ffffff",
+            });
+            answerText.setVisible(true);
+
+            setTimeout(() => answerText.setVisible(false), 3000);
+          }
+
+          // Сброс ввода
+          enteredWord = "";
+          inputText2.setText("");
+        });
+
+        // Показываем интерфейс ввода
+        function showInput() {
+          inputBox2.setVisible(true);
+          inputText2.setVisible(true);
+          promptText2.setVisible(true);
+          submitButton2.setVisible(true);
+          enteredWord = ""; // Сбрасываем введенное слово
+          inputText2.setText(""); // Очищаем текст
+        }
+
+        async function gameFlow(scene) {
+          const delay = (ms) =>
+            new Promise((resolve) => setTimeout(resolve, ms));
+
+          text.setText(dialogs[0]);
+          m.setVisible(true);
+          wm.setVisible(false);
+          await delay(1000);
+
+          text.setText(dialogs[1]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(1000);
+
+          pulseSafe(scene, safe);
+          safe.setInteractive();
+
+          await new Promise((resolve) => {
+            safe.once("pointerdown", () => {
+              safeTween.stop();
+              m.setVisible(true);
+              wm.setVisible(false);
+              text.setText(dialogs[3]);
+              resolve();
+            });
+          });
+
+          await delay(1000);
+          text.setText(dialogs[4]);
+          m.setVisible(false);
+          wm.setVisible(true);
+
+          pulseBook(scene, book);
+          book.setInteractive();
+
+          await new Promise((resolve) => {
+            book.once("pointerdown", () => {
+              bookTween.stop();
+              resolve();
+            });
+          });
+
+          safe.setInteractive();
+          safe.on("pointerdown", () => {
+            inputBox.setVisible(true);
+            inputText.setVisible(true);
+            promptText.setVisible(true);
+            submitButton.setVisible(true);
+            enteredCode = "";
+            inputText.setText("");
+            statusText.setVisible(false);
+          });
+
+          waitForRequiredPage(scene, afterPageOpened);
+        }
+
+        gameFlow(this);
+
+        function waitForSafeToOpen(scene, onSafeOpened) {
+          const checkSafeOpened = () => {
+            if (!safeOpened) {
+              setTimeout(checkSafeOpened, 100);
+            } else {
+              onSafeOpened(scene);
+            }
+          };
+
+          checkSafeOpened();
+        }
+
+        function waitForRequiredPage(scene, onPageOpened) {
+          const checkPage = () => {
+            if (currentPage != 6) {
+              setTimeout(checkPage, 100);
+            } else {
+              onPageOpened(scene);
+            }
+          };
+
+          checkPage();
+        }
+
+        async function afterPageOpened(scene) {
+          const delay = (ms) =>
+            new Promise((resolve) => setTimeout(resolve, ms));
+
+          text.setText(dialogs[5]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[6]);
+          m.setVisible(true);
+          wm.setVisible(false);
+          await delay(5000);
+
+          waitForSafeToOpen(scene, afterSafeOpened);
+        }
+
+        async function afterSafeOpened(scene) {
+          safe.setInteractive(false);
+          const delay = (ms) =>
+            new Promise((resolve) => setTimeout(resolve, ms));
+
+          text.setText(dialogs[7]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[8]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[9]);
+          m.setVisible(false);
+          wm.setVisible(true);
+
+          console.log("here");
+          books.setInteractive();
+
+          await new Promise((resolve) => {
+            books.once("pointerdown", () => {
+              m.setVisible(true);
+              wm.setVisible(false);
+              text.setText(dialogs[10]);
+              resolve();
+            });
+          });
+
+          await delay(5000);
+          text.setText(dialogs[11]);
+          m.setVisible(false);
+          wm.setVisible(true);
+
+          showInput();
+          waitForRequiredRam(scene, afterFoundRam);
+        }
+
+        function waitForRequiredRam(scene, onFoundRam) {
+          const checkRam = () => {
+            if (!foundRam) {
+              setTimeout(checkRam, 100);
+            } else {
+              onFoundRam(scene);
+            }
+          };
+
+          checkRam();
+        }
+
+        async function afterFoundRam(scene) {
+          const delay = (ms) =>
+            new Promise((resolve) => setTimeout(resolve, ms));
+
+          text.setText(`Мария: Я думаю что это ${foundRamString}.`);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[13]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[14]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+
+          text.setText(dialogs[15]);
+          m.setVisible(false);
+          wm.setVisible(true);
+          await delay(5000);
+        }
+      }
+      function update() {}
+    </script>
+  </body>
+</html>
