@@ -627,7 +627,48 @@
       const game = new Phaser.Game(config);
 
       function create() {
-        firstScene(this);
+        // Создаем фон для начального меню
+        const menuBackground = this.add.graphics();
+        menuBackground.fillStyle(0x000000, 1); // Черный фон
+        menuBackground.fillRect(0, 0, this.scale.width, this.scale.height);
+
+        // Добавляем текст кнопки
+        const startButton = this.add.text(
+          this.scale.width / 2,
+          this.scale.height / 2,
+          "НАЧАТЬ",
+          {
+            fontSize: "64px",
+            fontFamily: "Arial",
+            color: "#ffffff",
+            backgroundColor: "#ff0000",
+            padding: { x: 20, y: 10 },
+          }
+        );
+        startButton.setOrigin(0.5, 0.5);
+        startButton.setInteractive({ useHandCursor: true }); // Добавляем интерактивность
+
+        // Обработчик клика
+        startButton.on("pointerdown", () => {
+          // Очищаем экран
+          this.children.removeAll(); // Удаляет все объекты со сцены
+
+          // Запускаем первую сцену
+          firstScene(this);
+        });
+
+        // Текстовая инструкция (необязательно)
+        const instructionText = this.add.text(
+          this.scale.width / 2,
+          this.scale.height / 2 + 100,
+          "Нажмите, чтобы начать",
+          {
+            fontSize: "24px",
+            fontFamily: "Arial",
+            color: "#ffffff",
+          }
+        );
+        instructionText.setOrigin(0.5, 0.5);
       }
 
       function update() {}
